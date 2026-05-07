@@ -2,14 +2,14 @@ version: "3.8"
 services:
 
   devopsdb:
-    image: sahithi0622/javaproject_dbimage
+    image: sahithi0622/javaproject_dbimage:database
     ports:
       - "3306"
     deploy:
       replicas: 1
 
   application:
-    image: sahithi0622/javaproject_appimage
+    image: sahithi0622/javaproject_appimage:application
     ports:
       - "8080"
     deploy:
