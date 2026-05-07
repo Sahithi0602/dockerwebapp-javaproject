@@ -1,16 +1,18 @@
----
-version: "3"
+version: "3.8"
 services:
- devopsdb:
-   container_name: devopsdb
-   image: dbimage
-   ports:
-     - "3306:3306"
 
- application:
-   container_name: appcontainer
-   image: appimage
-   ports:
-     - "1234:8080"
-   depends_on:
-     - "devopsdb"
+  devopsdb:
+    image: sahithi0622/javaproject_dbimage
+    ports:
+      - "3306"
+    deploy:
+      replicas: 1
+
+  application:
+    image: sahithi0622/javaproject_appimage
+    ports:
+      - "8080"
+    deploy:
+      replicas: 2
+    depends_on:
+      - devopsdb
