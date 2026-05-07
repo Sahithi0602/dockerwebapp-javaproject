@@ -1,6 +1,5 @@
 version: "3.8"
 services:
-
   devopsdb:
     image: sahithi0622/javaproject_dbimage:database
     ports:
