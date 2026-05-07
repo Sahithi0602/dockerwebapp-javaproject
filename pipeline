@@ -1,0 +1,89 @@
+pipeline {
+    agent any
+
+    tools {
+        maven "mymaven"
+    }
+
+    stages {
+        stage("clean workspace") {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage("code") {
+            steps {
+                git 'https://github.com/Sahithi0602/dockerwebapp-javaproject.git'
+            }
+        }
+
+        stage("build") {
+            steps {
+                sh "mvn clean package"
+                sh "cp -r target Docker-app"
+            }
+        }
+        stage("code quality analysis"){
+            steps{
+                  withSonarQubeEnv("mysonar") {
+                       sh "mvn clean verify sonar:sonar -Dsonar.projectKey=Myproject"
+                 }
+            }
+        }
+        stage("quality gates"){
+            steps{
+                script {
+                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
+                }
+            }
+        }
+        stage("artifact upload"){
+            steps{
+                nexusArtifactUploader artifacts: [[artifactId: 'vprofile', classifier: '', file: 'target/vprofile-v2.war', type: 'war']], credentialsId: 'nexus', groupId: 'com.visualpathit', nexusUrl: '100.27.8.13:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'myrepo', version: 'v2'
+            }
+        }
+        stage("images"){
+            steps{
+                sh 'docker build -t appimage Docker-app'
+                sh 'docker build -t dbimage Docker-db'
+            }
+        }
+        stage("image scanner"){
+            steps{
+               sh  "trivy image appimage >> appimage-report.txt"
+               sh  "trivy image dbimage >> dbimage-report.txt" 
+            }
+        }
+        stage("tag"){
+            steps{
+                sh "docker tag appimage sahithi0622/javaproject_appimage:application"
+                sh "docker tag dbimage sahithi0622/javaproject_dbimage:database"
+            }
+        }
+        stage("push"){
+            steps{
+              withDockerRegistry(credentialsId: 'dockerhub') {
+                  sh "docker push sahithi0622/javaproject_appimage:application"
+                  sh "docker push sahithi0622/javaproject_dbimage:database"
+                }
+           }
+        }    
+        stage("deploy"){
+            steps{
+                sh "docker stack deploy project --compose-file=compose.yml"
+            }
+        }
+        
+    }
+
+    post {
+        always {
+            mail(
+                to: "sahithi.feb2000@gmail.com",
+                subject: "Pipeline status",
+                body: "${currentBuild.currentResult}: Job ${env.JOB_NAME}\nBuild ${env.BUILD_NUMBER}\nMore info at: ${env.BUILD_URL}"
+            )
+        }
+    }
+}
